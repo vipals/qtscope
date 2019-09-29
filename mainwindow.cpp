@@ -83,7 +83,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->psdPlot->setAxisScale(QwtPlot::xBottom,-0.5,0.5);
     ui->psdPlot->setAxisTitle(
         QwtPlot::yLeft,QString::fromLocal8Bit("PSD, dB"));
-    ui->psdPlot->setAxisScale(QwtPlot::yLeft,-60,0);
+    ui->psdPlot->setAxisScale(QwtPlot::yLeft,-50,10);
 
     curv_S = new QwtPlotCurve(QString("U[Q](f)"));
     curv_S->setPen(QPen(Qt::blue));
@@ -118,6 +118,7 @@ void MainWindow::onSockReadyRead()
     if(mTcpSocket->bytesAvailable()>bytesToRead)
     {
         QByteArray array = mTcpSocket->read(bytesToRead);
+        mTcpSocket->readAll();
         QVector<double> x;
         QVector<double> I;
         QVector<double> Q;
@@ -153,6 +154,7 @@ void MainWindow::onSockReadyRead()
         ui->psdPlot->replot();
 
     //    QThread::msleep(50);
+
     }
 }
 
