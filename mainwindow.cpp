@@ -1,3 +1,5 @@
+#include <complex.h>
+
 #include <QThread>
 
 #include <liquid/liquid.h>
@@ -83,9 +85,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->psdPlot->setAxisScale(QwtPlot::xBottom,-0.5,0.5);
     ui->psdPlot->setAxisTitle(
         QwtPlot::yLeft,QString::fromLocal8Bit("PSD, dB"));
-    ui->psdPlot->setAxisScale(QwtPlot::yLeft,-50,10);
+    ui->psdPlot->setAxisScale(QwtPlot::yLeft,-50,30);
 
-    curv_S = new QwtPlotCurve(QString("U[Q](f)"));
+    curv_S = new QwtPlotCurve(QString("PSD"));
     curv_S->setPen(QPen(Qt::blue));
 
     curv_S->attach(ui->psdPlot);
@@ -115,46 +117,43 @@ void MainWindow::onSockReadyRead()
 {
     //qDebug() << "Data ready to read";
     const int bytesToRead = samplesToRead * channels;
-    if(mTcpSocket->bytesAvailable()>bytesToRead)
+    if(mTcpSocket->bytesAvailable()>=bytesToRead)
     {
         QByteArray array = mTcpSocket->read(bytesToRead);
-        mTcpSocket->readAll();
-        QVector<double> x;
-        QVector<double> I;
-        QVector<double> Q;
-        QVector<double> S;
-        QVector<double> F;
+
+        mTcpSocket->read(mTcpSocket->bytesAvailable() - mTcpSocket->bytesAvailable() % channels);
+        QVector<double> vector_x;
+        QVector<double> vector_I;
+        QVector<double> vector_Q;
+        QVector<double> vector_S;
+        QVector<double> vector_F;
 
         int nfft = array.length() / channels;
-        spgramf q = spgramf_create_default(nfft);
+        spgramcf q = spgramcf_create_default(nfft);
 
         //qDebug() << "Data bytes read " << array.length();
-        for (int i = 0; i < array.length(); i++) {
-            float v = (unsigned char)array.at(i) - 127;
-            if (i % channels == 0) {
-                I << v;
-                x << i/channels;
-                spgramf_push(q, v / adcMaxValue);
-            } else
-                Q << v;
+        for (int i = 0; i < array.length(); i += 2) {
+            double v = ((unsigned char)array.at(i) - 127);
+            double u = ((unsigned char)array.at(i+1) - 127);
+            vector_I << v;
+            vector_Q << u;
+            vector_x << i / channels;
+            spgramcf_push(q, v/adcMaxValue + _Complex_I*u/adcMaxValue);
         }
         float psd_dB[nfft];
-        spgramf_get_psd(q, psd_dB);
-        spgramf_destroy(q);
+        spgramcf_get_psd(q, psd_dB);
+        spgramcf_destroy(q);
         for (int i = 0; i < nfft; i++) {
-            S << psd_dB[i];
-            F << -0.5 + (float)i/nfft;
+            vector_S << psd_dB[i];
+            vector_F << -0.5 + (float)i/nfft;
         }
 
-        curv_I->setSamples(x, I);
-        curv_Q->setSamples(x, Q);
+        curv_I->setSamples(vector_x, vector_I);
+        curv_Q->setSamples(vector_x, vector_Q);
         ui->iqPlot->replot();
 
-        curv_S->setSamples(F, S);
+        curv_S->setSamples(vector_F, vector_S);
         ui->psdPlot->replot();
-
-    //    QThread::msleep(50);
-
     }
 }
 
