@@ -1,4 +1,4 @@
-# qtscope
+# QtScope data from RTL SDR
 
 sudo apt install rtl-sdr
 
