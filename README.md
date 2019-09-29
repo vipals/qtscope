@@ -1,4 +1,4 @@
-# QtScope data from RTL SDR
+# Real Time plot and PSD of raw data from RTL SDR
 
 sudo apt install rtl-sdr
 
